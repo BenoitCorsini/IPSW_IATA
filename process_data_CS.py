@@ -53,27 +53,28 @@ if __name__ == '__main__':
 
             # Normalize by number of days 
 
-            # non IOSA flights
-            if n_days_non_IOSA == 0:
-                count_nonIOSA = 0
-                asm_nonIOSA = 0
-                freq_nonIOSA = 0
-            else:
-                count_nonIOSA /= n_days_non_IOSA
-                asm_nonIOSA /= n_days_non_IOSA
-                freq_nonIOSA /= n_days_non_IOSA
+            # # non IOSA flights
+            # if n_days_non_IOSA == 0:
+            #     count_nonIOSA = 0
+            #     asm_nonIOSA = 0
+            #     freq_nonIOSA = 0
+            # else:
+            #     count_nonIOSA /= n_days_non_IOSA
+            #     asm_nonIOSA /= n_days_non_IOSA
+            #     freq_nonIOSA /= n_days_non_IOSA
 
-            # IOSA flights
-            if n_days_IOSA == 0:
-                count_IOSA = 0
-                asm_IOSA = 0
-                freq_IOSA = 0
-            else:
-                count_IOSA /= n_days_IOSA
-                asm_IOSA /= n_days_IOSA
-                freq_IOSA /= n_days_IOSA
+            # # IOSA flights
+            # if n_days_IOSA == 0:
+            #     count_IOSA = 0
+            #     asm_IOSA = 0
+            #     freq_IOSA = 0
+            # else:
+            #     count_IOSA /= n_days_IOSA
+            #     asm_IOSA /= n_days_IOSA
+            #     freq_IOSA /= n_days_IOSA
 
             x = pd.Series(data={'Airline':row['Airline'], 'IATA Code': row['IATA Code'], 
+                'days IOSA': n_days_IOSA, 'days non IOSA': n_days_non_IOSA,
                 'IOSA flights': count_IOSA, 'Non IOSA flights': count_nonIOSA,
                 'ASMs IOSA': asm_IOSA, 'ASMs non IOSA': asm_nonIOSA, 
                 'Frequency IOSA': freq_IOSA, 'Frequency non IOSA': freq_nonIOSA }, name=i)
@@ -83,6 +84,7 @@ if __name__ == '__main__':
             i += 1
 
     stats_IOSA.to_excel("stats_IOSA.xlsx")
+    stats_IOSA.to_csv("stats_IOSA.csv")
 
     with open('stats_IOSA.pkl','wb') as file:
         pickle.dump(stats_IOSA,file)

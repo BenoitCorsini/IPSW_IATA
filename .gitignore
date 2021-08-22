@@ -7,3 +7,8 @@ __pycache__/
 *.csv
 *.tsv
 *.xlsx
+*.dirlock
+*.lock
+Passenger/backup/
+Passenger/old/
+*.h5

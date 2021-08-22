@@ -5,7 +5,6 @@ import pickle
 
 if __name__ == '__main__':
 
-
     # %% Load airline IOSA registration status
 
     file = 'IOSA Registry/IPSW - IOSA Registry.xlsx'
