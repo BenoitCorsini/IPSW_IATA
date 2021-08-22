@@ -29,6 +29,7 @@ if __name__ == '__main__':
 
     i = 0
     for key, group in grouped_airlines:
+
         print('processing %s' %(key))
 
         unique_ICAO = group['ICAO'].unique()
@@ -36,6 +37,7 @@ if __name__ == '__main__':
 
         # Impute missing IOSA registration dates
         group.dropna(subset = ['RegistrationExpiry'], inplace=True) # remove empty registration entries
+        group = group.sort_values(by=['RegistrationExpiry'])
 
         if len(group) == 0:
             continue # Skip airlines that have no fields left after dropping empty cells
@@ -97,6 +99,7 @@ if __name__ == '__main__':
         i += 1
 
     process_IOSA.to_excel("processed_IOSA.xlsx")
+    process_IOSA.to_csv("processed_IOSA.csv")
 
     with open('IOSA_info.pkl','wb') as file:
         pickle.dump(process_IOSA,file)
