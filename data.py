@@ -73,9 +73,9 @@ def load_IOSA(folder=IOSA_DIR):
 def load_codeshares(folder=CODESHARE_DIR):
 	'''
 	Columns:
-		'IATA AL',
+		'IATA AL', --Airline code--
 		'Flight No',
-		'Codeshare Car All',
+		'Codeshare Car All', --List of codeshares--
 		'Dep Airport Code',
 		'Arr Airport Code',
 		'International/Domestic',
@@ -100,9 +100,9 @@ def load_codeshares(folder=CODESHARE_DIR):
 def load_operating(folder=OPERATING_DIR):
 	'''
 	Columns:
-		'IATA AL',
+		'IATA AL', --Airline code--
 		'Flight No',
-		'Codeshare Car All',
+		'Codeshare Car All', --List of codeshares--
 		'Dep Airport Code',
 		'Arr Airport Code',
 		'International/Domestic',
@@ -127,26 +127,26 @@ def load_passenger(folder=PASSENGER_DIR):
 	'''
 	Columns:
 		'Travel Month',
-		'Mkt Al 1',
+		'Mkt Al 1', --Marketing Airlines--
 		'Mkt Al 2',
 		'Mkt Al 3',
 		'Mkt Al 4',
 		'Mkt Al 5',
 		'Mkt Al 6',
-		'Op Al 1',
+		'Op Al 1', --Operating Airlines--
 		'Op Al 2',
 		'Op Al 3',
 		'Op Al 4',
 		'Op Al 5',
 		'Op Al 6',
-		'Orig Code',
-		'Dest Code',
-		'Seg Mkt Airline Code',
+		'Orig Code', --IATA Code--
+		'Dest Code', --IATA Code--
+		'Seg Mkt Airline Code', 
 		'Seg Op Al Code',
 		'Seg Orig Airport Code',
 		'Seg Dest Airport Code',
-		'Reported + Est. Pax',
-		'RPM'
+		'Reported + Est. Pax', --Number of passengers--
+		'RPM', --Passenger x Miles--
 	'''
 	files = os.listdir(folder)[:1]
 
