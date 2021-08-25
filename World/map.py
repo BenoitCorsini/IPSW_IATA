@@ -1,50 +1,11 @@
 import os
 import os.path as osp
 import matplotlib.pyplot as plt
-from matplotlib.patches import *
-from matplotlib.transforms import *
+from matplotlib.patches import Circle, Polygon
 import shapefile
 import numpy as np
-import cv2
-import pandas as pd
 
-
-PARAMS = {
-    'figure' : {
-        'size' : 10,
-        'extra_space' : 1,
-    },
-    'globe' : {
-        'land_colour' : 'forestgreen',
-        'water_colour' : 'aquamarine',
-    },
-    'shade' : {
-        'land_colour' : 'bisque',
-        'water_colour' : 'linen',
-        'angle' : 170,
-        'scale' : 0.7,
-        'ratio' : 0.3,
-        'rotation' : -75,
-        'x_pos' : 0.9,
-        'y_pos' : 0.1,
-    },
-    'zorder' : {
-        'water' : 0.5,
-        'land' : 1,
-        'shade_water' : -1,
-        'shade_land' : -0.5,
-    }
-}
-params = {
-    'land_colour' : 'bisque',
-    'water_colour' : 'linen',
-    'dark_side_angle' : 170,
-    'scale' : 0.7,
-    'ratio' : 0.3,
-    'angle' : 75,
-    'x_pos' : 0.9,
-    'y_pos' : 0.1,
-}
+from config import PARAMS
 
 
 class WorldMap(object):
@@ -58,6 +19,7 @@ class WorldMap(object):
             shx=open(osp.join(self.map_name, self.map_name + '.shx'), 'rb'),
             prj=open(osp.join(self.map_name, self.map_name + '.prj'), 'rb'),
         )
+        self.globe = None
 
     @staticmethod
     def normalize_angle(angle):
@@ -120,14 +82,14 @@ class WorldMap(object):
         '''
         angle = self.normalize_angle(angle)
 
-        globe = Circle(
+        self.globe = Circle(
             xy=(0, 0),
             radius=1,
             color=self.params['globe']['water_colour'],
             zorder=self.params['zorder']['water'],
             lw=0,
         )
-        self.ax.add_patch(globe)
+        self.ax.add_patch(self.globe)
         for shape in self.world.shapes():
             for turn in [-1, 0, 1]: # to cover for the boundary problems
                 points, unseen = zip(*[self.project(point, angle, turn) for point in shape.points])
@@ -140,8 +102,6 @@ class WorldMap(object):
                     ))
 
         self.plot_shade(angle)
-
-        return globe
 
     def plot_shade(self, angle=0):
         '''
@@ -204,8 +164,3 @@ class WorldMap(object):
         self.set_figure()
         self.plot_globe(angle)
         self.savefig(name, folder)
-
-
-if __name__ == '__main__':
-    WM = WorldMap()
-    WM.plot()
