@@ -149,26 +149,30 @@ class WorldMap(object):
         return angle
 
     @staticmethod
-    def spherized(point, angle=0, turn=0, flip=False):
+    def spherized(point, angle=0, turn=0, flip=False, r=None):
         x, y = point
         y = y*np.pi/180
         x = x - angle + turn*360
         unseen = False
 
-        if x > 90:
-            x = 90
-            unseen = True
-        elif x < -90:
-            x = -90
-            unseen = True
+        if r is None:
+            r = 1
 
-        x = np.sin(x*np.pi/180)*np.cos(y)
-        y = np.sin(y)
+        pos_x = r*np.sin(x*np.pi/180)*np.cos(y)
+        pos_y = r*np.sin(y)
+        d = pos_x**2 + pos_y**2
+
+        if (x > 90) & (d <= 1):
+            pos_x = r*np.cos(y)
+            unseen = True
+        elif (x < -90) & (d <= 1):
+            pos_x = - r*np.cos(y)
+            unseen = True
 
         if flip:
-            x = -x
+            pos_x = - pos_x
 
-        return (x, y), unseen
+        return (pos_x, pos_y), unseen
 
     def frames_to_video(self, name='world'):
         '''
@@ -193,7 +197,7 @@ class WorldMap(object):
         video.release()
         cv2.destroyAllWindows()
 
-    def make_frames(self, delta_angle=2):
+    def make_frames(self, delta_angle=20):
         for angle in range(0, 360, delta_angle):
             print(angle)
             self.plot(angle, f'{angle:04d}', self.frames_dir)
@@ -205,14 +209,7 @@ class WorldFlights(WorldMap):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         df = load_airport()
-        self.airports = (df[['NO_LONGITUDE', 'NO_LATITUDE']]).dropna().sample(10,random_state=0).to_numpy()[[2,5],:]
-
-    @staticmethod
-    def dist(pair):
-        longitude, latitude = pair[:,0], pair[:,1]
-        x, y, z = np.cos(longitude)*np.cos(latitude), np.sin(longitude)*np.cos(latitude), np.sin(latitude)
-
-        return ((x[0] - x[1])**2 + (y[0] - y[1])**2 + (z[0] - z[1])**2)**.5
+        self.airports = (df[['NO_LONGITUDE', 'NO_LATITUDE']]).dropna().sample(10,random_state=0).to_numpy()#[[2,5],:]
 
     @staticmethod
     def coord_to_xyz(coord):
@@ -224,16 +221,36 @@ class WorldFlights(WorldMap):
     @staticmethod
     def xyz_to_coord(xyz):
         latitude = np.arcsin(xyz[:,2])*180/np.pi
-        longitude = np.arctan(xyz[:,1]/xyz[:,0])*180/np.pi
+
+        x = xyz[:,0]
+        zero_x = (x == 0).astype(float)
+        sign_x = (x > 0).astype(float) - (x < 0).astype(float)
+        y = xyz[:,1]
+        zero_y = (y == 0).astype(float)
+        sign_y = (y > 0).astype(float) - (y < 0).astype(float)
+
+        alpha = (x != 0)*np.arctan(y/(x + (x==0)))*180/np.pi
+
+        longitude = zero_x*90*sign_y + zero_y*(90*sign_x - 90) + (1 - zero_x)*(1 - zero_y)*(alpha + sign_y*(90 - 90*sign_x))
+
+        assert np.all((latitude >= -90)*(latitude <= 90))
+        assert np.all((longitude >= -180)*(longitude < 180))
 
         return np.stack([longitude, latitude], axis=1)
 
-    def path(self, pair, delta_step=0.01):
+    @staticmethod
+    def to_height(points, max_height=1.2):
+        heights = np.arange(np.size(points, axis=0))/(np.size(points, axis=0) - 1)
+        heights = heights*(1 - heights)
+        heights = heights/np.max(heights)
+        heights = 1 + heights*(max_height - 1)
+
+        return heights
+
+    def path(self, pair, delta_step=0.001):
         xyz = self.coord_to_xyz(pair)
 
         n_steps = int(np.ceil(((xyz[0,0] - xyz[1,0])**2 + (xyz[0,1] - xyz[1,1])**2 + (xyz[0,2] - xyz[1,2])**2)/delta_step))
-        #path = np.arange(-n_steps, n_steps+1)/n_steps
-        #path = np.arccos(path[::-1])/np.pi
         path = np.arange(n_steps+1)/n_steps
         path = np.reshape(path, (-1, 1))
         
@@ -253,10 +270,16 @@ class WorldFlights(WorldMap):
                 point, unseen = self.spherized(point, angle, turn)
                 if not unseen:
                     dist = (point[0]**2 + point[1]**2)**.5
-                    a = np.arctan(point[1]/point[0])*180/np.pi
+                    if point[0] == 0:
+                        if point[1] > 0:
+                            a = 90
+                        else:
+                            a = -90
+                    else:
+                        a = np.arctan(point[1]/point[0])*180/np.pi
                     self.ax.add_patch(Ellipse(
                         point,
-                        0.1*np.cos(dist*np.pi/2),
+                        0.1*np.arccos(dist)*2/np.pi,
                         0.1,
                         a,
                         color=colour,
@@ -265,43 +288,31 @@ class WorldFlights(WorldMap):
                         clip_path=globe
                     ))
 
-    def plot_the_path(self, points, angle=0, globe=None, colour='black'):
-        globe=None
+    def plot_path(self, points, angle=0, colour='black'):
         angle = self.normalize_angle(angle)
         assert (angle >= -180) & (angle < 180) # checking that 'angle' is well-normalized
 
         for turn in [-1, 0, 1]:
-            for point in points:
-                point, unseen = self.spherized(point, angle, turn)
+            heights = self.to_height(points)
+            for point, height in zip(points, heights):
+                point, unseen = self.spherized(point, angle, turn, r=height)
                 if not unseen:
-                    self.ax.add_patch(Ellipse(
-                        point,
-                        0.01,
-                        0.01,
-                        0,
-                        color=colour,
-                        lw=0,
-                        zorder=1.5,
-                        clip_path=globe
-                    ))
+                    self.ax.add_patch(Circle(point, 0.007, color=colour, lw=0, zorder=1.5))
 
     def plot(self, angle=0, name='map', folder=''):
         self.set_figure()
         globe = self.plot_world(angle)
-        points = np.random.rand(2,2)*180-90
-        print(points)
-        self.plot_points(points, angle, globe, 'crimson')
+        self.plot_points(self.airports, angle, globe, 'crimson')
 
-        path = self.path(points)
-        self.plot_the_path(path, angle, globe, 'black')
+        for i,j in [(0,1), (3,5), (3,7), (3,9)]:
+            path = self.path(self.airports[[i,j],:])
+            self.plot_path(path, angle, 'sienna')
 
         self.savefig(name, folder)
-
-
 
 
 if __name__ == '__main__':
     WM = WorldFlights()
     WM.plot()
-    #WM.make_frames()
+    WM.make_frames()
     #WM.frames_to_video()
