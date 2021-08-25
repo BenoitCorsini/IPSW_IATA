@@ -72,13 +72,9 @@ class WorldMap(object):
             prj=open(osp.join(self.main_dir, self.map_name, self.map_name + '.prj'), 'rb'),
         )
 
-        df = load_airport()
-        self.airports = (df[['NO_LONGITUDE', 'NO_LATITUDE']]).dropna().sample(10,random_state=0).to_numpy()
-
     def plot(self, angle=0, name='map', folder=''):
         self.set_figure()
         globe = self.plot_world(angle)
-        self.plot_airports(angle, globe)
         self.savefig(name, folder)
 
     def set_figure(self, extra=1):
@@ -131,28 +127,6 @@ class WorldMap(object):
 
         return globe
 
-    def plot_airports(self, angle=0, globe=None):
-        globe=None
-        angle = self.normalize_angle(angle)
-        assert (angle >= -180) & (angle < 180) # checking that 'angle' is well-normalized
-
-        for turn in [-1, 0, 1]:
-            for point in self.airports:
-                point, unseen = self.spherized(point, angle, turn)
-                if not unseen:
-                    dist = (point[0]**2 + point[1]**2)**.5
-                    a = np.arctan(point[1]/point[0])*180/np.pi
-                    self.ax.add_patch(Ellipse(
-                        point,
-                        0.1*np.cos(dist*np.pi/2),
-                        0.1,
-                        a,
-                        color='crimson',
-                        lw=0,
-                        zorder=1.5,
-                        clip_path=globe
-                    ))
-
     def savefig(self, name='map', folder=''):
         '''
         Saves the current state of the figure
@@ -175,7 +149,7 @@ class WorldMap(object):
         return angle
 
     @staticmethod
-    def spherized(point, angle, turn, flip=False):
+    def spherized(point, angle=0, turn=0, flip=False):
         x, y = point
         y = y*np.pi/180
         x = x - angle + turn*360
@@ -224,8 +198,110 @@ class WorldMap(object):
             print(angle)
             self.plot(angle, f'{angle:04d}', self.frames_dir)
 
+
+
+class WorldFlights(WorldMap):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        df = load_airport()
+        self.airports = (df[['NO_LONGITUDE', 'NO_LATITUDE']]).dropna().sample(10,random_state=0).to_numpy()[[2,5],:]
+
+    @staticmethod
+    def dist(pair):
+        longitude, latitude = pair[:,0], pair[:,1]
+        x, y, z = np.cos(longitude)*np.cos(latitude), np.sin(longitude)*np.cos(latitude), np.sin(latitude)
+
+        return ((x[0] - x[1])**2 + (y[0] - y[1])**2 + (z[0] - z[1])**2)**.5
+
+    @staticmethod
+    def coord_to_xyz(coord):
+        longitude, latitude = coord[:,0]*np.pi/180, coord[:,1]*np.pi/180
+        x, y, z = np.cos(longitude)*np.cos(latitude), np.sin(longitude)*np.cos(latitude), np.sin(latitude)
+
+        return np.stack([x,y,z], axis=1)
+
+    @staticmethod
+    def xyz_to_coord(xyz):
+        latitude = np.arcsin(xyz[:,2])*180/np.pi
+        longitude = np.arctan(xyz[:,1]/xyz[:,0])*180/np.pi
+
+        return np.stack([longitude, latitude], axis=1)
+
+    def path(self, pair, delta_step=0.01):
+        xyz = self.coord_to_xyz(pair)
+
+        n_steps = int(np.ceil(((xyz[0,0] - xyz[1,0])**2 + (xyz[0,1] - xyz[1,1])**2 + (xyz[0,2] - xyz[1,2])**2)/delta_step))
+        #path = np.arange(-n_steps, n_steps+1)/n_steps
+        #path = np.arccos(path[::-1])/np.pi
+        path = np.arange(n_steps+1)/n_steps
+        path = np.reshape(path, (-1, 1))
+        
+        path = xyz[0,:] + path*(xyz[1,:] - xyz[0,:])
+        path /= np.reshape((path[:,0]**2 + path[:,1]**2 + path[:,2]**2)**.5, (-1,1))
+        path = self.xyz_to_coord(path)
+
+        return path
+        
+
+    def plot_points(self, points, angle=0, globe=None, colour='black'):
+        angle = self.normalize_angle(angle)
+        assert (angle >= -180) & (angle < 180) # checking that 'angle' is well-normalized
+
+        for turn in [-1, 0, 1]:
+            for point in points:
+                point, unseen = self.spherized(point, angle, turn)
+                if not unseen:
+                    dist = (point[0]**2 + point[1]**2)**.5
+                    a = np.arctan(point[1]/point[0])*180/np.pi
+                    self.ax.add_patch(Ellipse(
+                        point,
+                        0.1*np.cos(dist*np.pi/2),
+                        0.1,
+                        a,
+                        color=colour,
+                        lw=0,
+                        zorder=1.5,
+                        clip_path=globe
+                    ))
+
+    def plot_the_path(self, points, angle=0, globe=None, colour='black'):
+        globe=None
+        angle = self.normalize_angle(angle)
+        assert (angle >= -180) & (angle < 180) # checking that 'angle' is well-normalized
+
+        for turn in [-1, 0, 1]:
+            for point in points:
+                point, unseen = self.spherized(point, angle, turn)
+                if not unseen:
+                    self.ax.add_patch(Ellipse(
+                        point,
+                        0.01,
+                        0.01,
+                        0,
+                        color=colour,
+                        lw=0,
+                        zorder=1.5,
+                        clip_path=globe
+                    ))
+
+    def plot(self, angle=0, name='map', folder=''):
+        self.set_figure()
+        globe = self.plot_world(angle)
+        points = np.random.rand(2,2)*180-90
+        print(points)
+        self.plot_points(points, angle, globe, 'crimson')
+
+        path = self.path(points)
+        self.plot_the_path(path, angle, globe, 'black')
+
+        self.savefig(name, folder)
+
+
+
+
 if __name__ == '__main__':
-    WM = WorldMap()
-    #WM.plot()
-    WM.make_frames()
-    WM.frames_to_video()
+    WM = WorldFlights()
+    WM.plot()
+    #WM.make_frames()
+    #WM.frames_to_video()
