@@ -3,6 +3,7 @@ import glob
 import pickle
 from dask import dataframe as dd
 from dask.distributed import Client
+import os
 
 import datetime
 
@@ -26,20 +27,36 @@ def read_tsv_files(filename):
     dtypes[titles[-2]] = 'float64'
     dtypes[titles[-1]] = 'float64'
 
-    passenger_data = dd.read_csv(filename)
-
     passenger_data = dd.read_csv(filename, delimiter='\t', 
         skiprows=6, skipfooter = 12,
         parse_dates=[titles[0],],
         names=titles,dtype=dtypes,
         blocksize=64000000) # = 64 Mb chunks
 
+    passenger_data = passenger_data.dropna(subset=['Seg Mkt Airline Code'])
+
+    # dask operation
+    passenger_data = passenger_data.drop(passenger_data.columns[1:13], axis=1)
+
     return passenger_data
+
+def check_IOSA(row, process_IOSA):
+
+    time_periods = process_IOSA['RegistrationPeriod'].loc[row['Seg Mkt Airline Code']]
+
+    is_iosa = False
+    for period in time_periods:
+
+        if (row['Travel Month'] >= period[0]) and (row['Travel Month'] <=period[1]):
+            is_iosa=True
+            break
+
+    return is_iosa
 
 if __name__ == '__main__':
 
     
-    client = Client(n_workers=2)
+    client = Client(n_workers=4)
 
     store = pd.HDFStore('./passenger_dataset.h5') # Hardisk file for storing data
 
@@ -51,74 +68,28 @@ if __name__ == '__main__':
         process_IOSA = pickle.load(file)
 
     passenger_data = read_tsv_files(filenames)
+    # passenger_data = passenger_data.head(500)
 
-    # store.put('passenger_data',
-    #        passenger_data,
-    #        format='table',
-    #        data_columns=True)
+    # Check which flights are codeshared
+    is_codeshared = passenger_data['Seg Mkt Airline Code'] != passenger_data['Seg Op Al Code']
+    passenger_data['is CS'] = is_codeshared
 
+    # pick only airlines in passenger dataset with entries in IOSA registry
+    passenger_data = passenger_data[passenger_data['Seg Mkt Airline Code'].isin(process_IOSA['IATA Code'])]
+    study_start = pd.Timestamp('2017-1-1')
+    study_end = pd.Timestamp('2021-5-1')
 
-
-
-
-
-#############################################################
-# Work in progress
-
-    # study_start = pd.Timestamp('2017-1-1')
-    # study_end = pd.Timestamp('2021-5-1')
-
-    # flight_month = passenger_data['Travel Month'].head(20)
-    # flight_code = passenger_data['Seg Mkt Airline Code'].head(20)
-
-    # # Identify IOSA registered flights
-    # mask_study = (flight_month >= str(study_start)) & (flight_month <= str(study_end))
-
-    # process_IOSA = process_IOSA.set_index('IATA Code')
-    # time_periods = process_IOSA['RegistrationPeriod'].reindex(flight_code.values)
-
+    flight_month = passenger_data['Travel Month']
+    flight_code = passenger_data['Seg Mkt Airline Code']
     
-    # df_lookup.loc[df.index.hour].values
+    # Identify IOSA registered flights
+    process_IOSA_noindex = process_IOSA.set_index('IATA Code')
+    passenger_data['Is IOSA'] = passenger_data.apply(check_IOSA, process_IOSA=process_IOSA_noindex, axis=1, meta=('Is IOSA', 'bool'))
 
-    # grouped_passenger_data = passenger_data.groupby(['Seg Mkt Airline Code']) # group fields by airline
-    # airline = grouped_passenger_data.get_group('HZ')
+    sample_data = passenger_data.sample(frac=0.0004).compute()
 
-    # df = passenger_data.tail(20)
-    # print(df)
+    with open('Passenger.pkl','wb') as file:
+        pickle.dump(sample_data,file)
 
-    # df = dd.from_pandas(passenger_data, npartitions=1)
-    # df.compute()
-
-
-# def check_IOSA(df):
-
-#     study_start = pd.Timestamp('2017-1-1')
-#     study_end = pd.Timestamp('2021-5-1')
-
-#     flight_month = df['Travel Month'].compute()
-#     flight_code = df['Seg Mkt Airline Code'].compute()
-
-#     # Identify IOSA registered flights
-#     mask_study = (flight_month >= str(study_start)) & (flight_month <= str(study_end))
-
-#     # Load IOSA registry
-#     with open("IOSA_info.pkl",'rb') as file:
-#         process_IOSA = pickle.load(file)
-
-#     row = process_IOSA.loc[process_IOSA['column_name'] == flight_code]
-
-#     for period in row['RegistrationPeriod']:
-        
-#         mask = (airline_month >= str(period[0])) & (airline_month <= str(period[1]))
-#         mask_IOSA = mask_study & mask
-#         mask_nonIOSA = mask_study & ~mask
-
-#     count_IOSA = len(airline.loc[mask_IOSA])
-#     asm_IOSA = sum(airline.loc[mask_IOSA]['ASMs'])
-#     freq_IOSA = sum(airline.loc[mask_IOSA]['Frequency'])
-
-#     count_nonIOSA = len(airline.loc[mask_nonIOSA])
-#     asm_nonIOSA = sum(airline.loc[mask_nonIOSA]['ASMs'])
-#     freq_nonIOSA = sum(airline.loc[mask_nonIOSA]['Frequency'])
-
-#     return len(series) - series.count()
+    sample_data.to_excel("Passenger.xlsx")
+    sample_data.to_csv("Passenger.csv")
