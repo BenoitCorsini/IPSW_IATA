@@ -96,6 +96,14 @@ class WorldMap(object):
                 if not all(unseen):
                     self.ax.add_patch(Polygon(
                         xy=points,
+                        color=self.params['globe']['border_colour'],
+                        zorder=self.params['zorder']['land_border'],
+                        lw=self.params['globe']['border'],
+                        clip_path=self.globe,
+                        joinstyle='round',
+                    ))
+                    self.ax.add_patch(Polygon(
+                        xy=points,
                         color=self.params['globe']['land_colour'],
                         zorder=self.params['zorder']['land'],
                         lw=0,
@@ -148,7 +156,7 @@ class WorldMap(object):
                         lw=0,
                     ))
 
-    def savefig(self, name='map', folder='images'):
+    def savefig(self, name='map', folder='.'):
         '''
         Saves the current state of the figure
         '''
@@ -157,7 +165,7 @@ class WorldMap(object):
             os.makedirs(folder)
         self.fig.savefig(osp.join(folder, name + '.png'))
 
-    def plot(self, name='map', folder='images', angle=0):
+    def plot(self, name='map', folder='.', angle=0):
         '''
         Plots the world globe
         '''

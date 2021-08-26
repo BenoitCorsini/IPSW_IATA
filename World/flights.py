@@ -31,7 +31,7 @@ class WorldFlights(WorldMap):
         start, end = pair
         xyz = self.coord_to_xyz(np.stack([start, end]))
 
-        n_steps = int(np.ceil((np.sum((xyz[0,:] - xyz[1,:])**2))/self.params['flights']['delta_step']))
+        n_steps = int(np.ceil((np.sum((xyz[0,:] - xyz[1,:])**2)**.5)/self.params['flights']['delta_step']))
         path = np.arange(n_steps + 1)/n_steps
         path = np.reshape(path, (-1, 1))
         
@@ -116,19 +116,26 @@ class WorldFlights(WorldMap):
                         clip_path=self.globe,
                     ))
 
-    def plot_flights(self, angle):
+    def plot_flights(self, angle, general_index=None):
         '''
         Plots the flights
         '''
         angle = self.normalize_angle(angle)
 
         for flights_info in self.flights.values():
+            r = flights_info['r']
             path = flights_info['path']
             heights = self.to_height(path)
 
             segments = []
             points = []
-            for coord, height in zip(path, heights):
+            if general_index is not None:
+                n_indices = self.params['airplanes']['n_indices']
+                airplane_index = (general_index % (len(path) + n_indices)) - n_indices
+                airplane_segments = []
+                airplane_points = []
+
+            for index, (coord, height) in enumerate(zip(path, heights)):
                 current_point = None
                 for turn in [-1, 0, 1]:
                     point, unseen = self.project(coord, angle, turn, r=height)
@@ -137,10 +144,23 @@ class WorldFlights(WorldMap):
 
                 if current_point is not None:
                     points.append(current_point)
+
+                    if general_index is not None:
+                        if (index >= airplane_index) & (index < airplane_index + self.params['airplanes']['n_indices']):
+                            airplane_points.append(current_point)
+
                 else:
                     segments.append(points)
                     points = []
+
+                    if general_index is not None:
+                        if (index >= airplane_index) & (index < airplane_index + self.params['airplanes']['n_indices']):
+                            airplane_segments.append(airplane_points)
+                            airplane_points = []
+
             segments.append(points)
+            if general_index is not None:
+                airplane_segments.append(airplane_points)
 
             for points in segments:
                 if points:
@@ -148,19 +168,42 @@ class WorldFlights(WorldMap):
                     self.ax.plot(x, y,
                         solid_joinstyle='round',
                         solid_capstyle='round',
-                        linewidth=self.params['flights']['size'] + self.params['flights']['border'],
+                        linewidth=r*self.params['flights']['size'] + self.params['flights']['border'],
                         color=self.params['flights']['border_colour'],
                         zorder=self.params['zorder']['flights_border'],
+                        alpha=r,
                     )
                     self.ax.plot(x, y,
                         solid_joinstyle='round',
                         solid_capstyle='round',
-                        linewidth=self.params['flights']['size'],
+                        linewidth=r*self.params['flights']['size'],
                         color=self.params['flights']['colour'],
                         zorder=self.params['zorder']['flights'],
+                        alpha=r,
                     )
 
-    def plot(self, name='map', folder='images', angle=0):
+            if general_index is not None:
+                for points in airplane_segments:
+                    if points:
+                        x, y = zip(*points)
+                        self.ax.plot(x, y,
+                            solid_joinstyle='round',
+                            solid_capstyle='round',
+                            linewidth=r*self.params['airplanes']['size'] + self.params['airplanes']['border'],
+                            color=self.params['airplanes']['border_colour'],
+                            zorder=self.params['zorder']['airplanes'],
+                            alpha=r,
+                        )
+                        self.ax.plot(x, y,
+                            solid_joinstyle='round',
+                            solid_capstyle='round',
+                            linewidth=r*self.params['airplanes']['size'],
+                            color=self.params['airplanes']['colour'],
+                            zorder=self.params['zorder']['airplanes'],
+                            alpha=r,
+                        )
+
+    def plot(self, name='map', folder='.', angle=0):
         '''
         Plots the airports and flights on the globe
         '''

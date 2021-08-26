@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import cv2
 import shutil
+import matplotlib.pyplot as plt
 
 import numpy as np
 import itertools
@@ -17,17 +18,13 @@ class WorldAnimation(WorldFlights):
         self.frames_dir = frames_dir
         self.fps = fps
 
-    def make_frames(self, n_angles=360, n_rotations=1, plot_airports=True, plot_flights=True):
-        if n_angles*n_rotations > 10000:
-            raise Exception('Too many frames for the video! You really want to see that earth spin don\'t ya?')
-
-        print(f'Number of frames to be made: {n_angles*n_rotations}')
-
+    def make_frames(self, n_angles=360, n_rotations=1, plot_airports=True, plot_flights=True, plot_airplanes=True):
         if osp.exists(self.frames_dir):
             shutil.rmtree(self.frames_dir)
         os.makedirs(self.frames_dir)
 
         index = 0
+        skew = np.random.randint(12345)
         for _ in range(n_rotations):
             for i_angle in range(n_angles):
                 angle = i_angle*360/n_angles
@@ -37,7 +34,10 @@ class WorldAnimation(WorldFlights):
                 if plot_airports:
                     self.plot_airports(angle)
                 if plot_flights:
-                    self.plot_flights(angle)
+                    if plot_airplanes:
+                        self.plot_flights(angle, general_index=skew + index)
+                    else:
+                        self.plot_flights(angle)
                 self.savefig(f'{index:04d}', self.frames_dir)
                 index += 1
 
@@ -67,16 +67,46 @@ class WorldAnimation(WorldFlights):
         video.release()
         cv2.destroyAllWindows()
 
-    def make(self, name='world', folder='.', **kwargs):
-        self.make_frames(**kwargs)
+    def make(self, name='world', folder='.', n_angles=360, n_rotations=1, plot_airports=True, plot_flights=True, plot_airplanes=True):
+        if n_angles*n_rotations > 10000:
+            raise Exception('Too many frames for the video! You really want to see that earth spin don\'t ya?')
+
+        print(f'Number of frames to be made: {n_angles*n_rotations}')
+
+        self.make_frames(n_angles, n_rotations, plot_airports, plot_flights, plot_airplanes)
         self.frames_to_video(name, folder)
 
+    def combine(self, name='world', folder='.', folder_1='frames_1', folder_2='frames_2', overlap=100):
+        if osp.exists(self.frames_dir):
+            shutil.rmtree(self.frames_dir)
+        os.makedirs(self.frames_dir)
+
+        files_1 = sorted(os.listdir(folder_1))
+        files_2 = sorted(os.listdir(folder_2))
+        assert len(files_1) == len(files_2)
+
+        for file_1, file_2 in zip(files_1, files_2):
+            image_1 = plt.imread(osp.join(folder_1, file_1))
+            image_2 = plt.imread(osp.join(folder_2, file_2))
+            assert np.size(image_1) == np.size(image_2)
+
+            image = np.concatenate([image_1[:,:-overlap,:], image_2[:,overlap:,:]], axis=1)
+            r = np.size(image, axis=1)/np.size(image, axis=0)
+
+            plt.figure(figsize=(r*self.params['figure']['size'], self.params['figure']['size']))
+            plt.imshow(image)
+            plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+            plt.axis('off')
+            plt.savefig(osp.join(self.frames_dir, file_1))
+            plt.close()
+
+        self.frames_to_video(name, folder)
 
 if __name__ == '__main__':
     N = 10
-    np.random.seed(0)
+    np.random.seed(27)
     airports = {f'airport {i}': {'coord':(x,y)} for i, (x,y) in enumerate(zip(np.random.rand(N)*360 - 180,np.random.rand(N)*180 - 90))}
     flights = {(x,y): {'size':1} for x,y in itertools.product(airports, airports) if (x != y) & (np.random.rand() < 2/N)}
 
     WA = WorldAnimation(airports=airports, flights=flights, params=PARAMS)
-    WA.make(n_rotations=2, n_angles=36)
+    WA.make(n_rotations=2, n_angles=180)

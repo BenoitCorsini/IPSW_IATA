@@ -6,6 +6,8 @@ PARAMS = {
     'globe' : {
         'land_colour' : 'forestgreen',
         'water_colour' : 'aquamarine',
+        'border' : 3,
+        'border_colour' : 'darkgreen',
     },
     'shade' : {
         'land_colour' : 'bisque',
@@ -19,25 +21,34 @@ PARAMS = {
     },
     'airports' : {
         'colour' : 'royalblue',
-        'size' : 0.1,
+        'size' : 0.05,
         'border' : 1,
         'border_colour' : 'midnightblue',
     },
     'flights' : {
         'max_height' : 1.2,
-        'delta_step' : 0.01,
-        'size' : 1,
+        'delta_step' : 0.005,
+        'size' : 3,
         'colour' : 'gold',
-        'border' : 1,
+        'border' : 2,
         'border_colour' : 'midnightblue',
+    },
+    'airplanes' : {
+        'n_indices' : 2,
+        'size' : 7,
+        'colour' : 'red',
+        'border' : 3,
+        'border_colour' : 'darkred',
     },
     'zorder' : {
         'water' : 0.5,
         'land' : 1,
+        'land_border' : 0.9,
         'shade_water' : -1,
         'shade_land' : -0.5,
         'airports' : 1.5,
         'flights' : 2,
         'flights_border' : 1.9,
+        'airplanes' : 3,
     },
 }
