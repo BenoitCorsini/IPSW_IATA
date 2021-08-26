@@ -92,6 +92,7 @@ class WorldFlights(WorldMap):
         angle = self.normalize_angle(angle)
 
         for airport_info in self.airports.values():
+            r = airport_info['r']
             for turn in [-1, 0, 1]:
                 point, unseen = self.project(airport_info['coord'], angle, turn)
                 if not unseen:
@@ -106,14 +107,15 @@ class WorldFlights(WorldMap):
 
                     self.ax.add_patch(Ellipse(
                         xy=point,
-                        width=self.params['airports']['size']*dist,
-                        height=self.params['airports']['size'],
+                        width=r*self.params['airports']['size']*dist,
+                        height=r*self.params['airports']['size'],
                         angle=a,
                         facecolor=self.params['airports']['colour'],
                         edgecolor=self.params['airports']['border_colour'],
                         lw=self.params['airports']['border'],
                         zorder=self.params['zorder']['airports'],
                         clip_path=self.globe,
+                        alpha=r,
                     ))
 
     def plot_flights(self, angle, general_index=None):
@@ -203,7 +205,7 @@ class WorldFlights(WorldMap):
                             alpha=r,
                         )
 
-    def plot(self, name='map', folder='.', angle=0):
+    def plot(self, name='map', folder='.', title='', angle=0):
         '''
         Plots the airports and flights on the globe
         '''
@@ -211,4 +213,4 @@ class WorldFlights(WorldMap):
         self.plot_globe(angle)
         self.plot_airports(angle)
         self.plot_flights(angle)
-        self.savefig(name, folder)
+        self.savefig(name, folder, title)

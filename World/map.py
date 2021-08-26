@@ -156,19 +156,36 @@ class WorldMap(object):
                         lw=0,
                     ))
 
-    def savefig(self, name='map', folder='.'):
+    def savefig(self, name='map', folder='.', title=''):
         '''
         Saves the current state of the figure
         '''
         assert hasattr(self, 'fig')
         if not osp.exists(folder):
             os.makedirs(folder)
+
+        bbox = {
+            'boxstyle' : 'round',
+            'edgecolor' : self.params['text']['colour'],
+            'facecolor' : self.params['text']['background'],
+            'linewidth' : self.params['text']['border'],
+        }
+        self.ax.text(
+            - 1 - self.params['figure']['extra_space'] + self.params['text']['x'],
+            - 1 - self.params['figure']['extra_space'] + self.params['text']['y'],
+            title,
+            fontsize=self.params['text']['fontsize'],
+            color=self.params['text']['colour'],
+            #fontweight='demibold',
+            bbox=bbox,
+        )
+
         self.fig.savefig(osp.join(folder, name + '.png'))
 
-    def plot(self, name='map', folder='.', angle=0):
+    def plot(self, name='map', folder='.', title='', angle=0):
         '''
         Plots the world globe
         '''
         self.set_figure()
         self.plot_globe(angle)
-        self.savefig(name, folder)
+        self.savefig(name, folder, title)

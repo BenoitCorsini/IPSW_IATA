@@ -2,6 +2,17 @@ PARAMS = {
     'figure' : {
         'size' : 10,
         'extra_space' : 1,
+        'font_dist' : 0.3,
+        'font_size' : 25,
+        'font_colour' : 'black'
+    },
+    'text' : {
+        'x' : 0.6,
+        'y' : 0.3,
+        'fontsize' : 25,
+        'colour' : 'black',
+        'background' : 'lightcyan',
+        'border' : 2,
     },
     'globe' : {
         'land_colour' : 'forestgreen',
