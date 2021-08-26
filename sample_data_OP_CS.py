@@ -103,6 +103,19 @@ def sample_n_line(sample_dir, num_line,random_line=True):
         data_sample.to_excel('sample_n_first_line/'+sample_dir+'/'+sample_dir+'.xlsx')
         data_sample.to_csv('sample_n_first_line/'+sample_dir+'/'+sample_dir+'.csv')
 
+def check_IOSA(row, process_IOSA):
+
+    time_periods = process_IOSA['RegistrationPeriod'].loc[row['IATA AL']]
+
+    is_iosa = False
+    for period in time_periods:
+
+        if (row['Time series'] >= period[0]) and (row['Time series'] <=period[1]):
+            is_iosa=True
+            break
+
+    return is_iosa
+
 def add_iosa_column(data_sample,iosa_info_data):
     
     with open(iosa_info_data,'rb') as file:
@@ -111,20 +124,10 @@ def add_iosa_column(data_sample,iosa_info_data):
     data_sample['Time series'] = pd.to_datetime(data_sample['Time series'],format="%Y-%m-%d %H:%M:%S")
  
     data_sample = data_sample[data_sample['IATA AL'].isin(process_IOSA['IATA Code'])]
-   
-    column_is_iosa=[]
-    for index, row in data_sample.iterrows(): 
-        current_process = process_IOSA[process_IOSA['IATA Code']==row['IATA AL']]
-        is_iosa=0 
-        for period in current_process['RegistrationPeriod'].values[0]:
 
-            if row['Time series'] >= period[0] and row['Time series'] <= period[1]: #check if IOSA
-                is_iosa=1
-                break
-        column_is_iosa.append(is_iosa)
+    process_IOSA_noindex = process_IOSA.set_index('IATA Code')
+    data_sample['Is IOSA'] = data_sample.apply(check_IOSA, process_IOSA=process_IOSA_noindex, axis=1, meta=('Is IOSA', 'bool'))
 
-    data_sample['Is IOSA']  = column_is_iosa 
-    
     return data_sample
 
 def sample_drop_num_stop_iata_column(sample_dir,iosa_info_data, num_line,random_line=True):
