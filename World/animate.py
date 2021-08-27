@@ -90,6 +90,7 @@ class WorldAnimation(WorldFlights):
             assert np.size(image_1) == np.size(image_2)
 
             image = np.concatenate([image_1[:,:-overlap,:], image_2[:,overlap:,:]], axis=1)
+            #image = np.concatenate([image_1, image_2[2*overlap:,:,:]], axis=0)
             r = np.size(image, axis=1)/np.size(image, axis=0)
 
             plt.figure(figsize=(r*self.params['figure']['size'], self.params['figure']['size']))
@@ -97,7 +98,7 @@ class WorldAnimation(WorldFlights):
             plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
             plt.axis('off')
             plt.savefig(osp.join(frames_dir, file_1))
-            plt.close()
+            plt.close('all')
 
         self.frames_to_video(name, folder, frames_dir)
 
