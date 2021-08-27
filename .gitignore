@@ -12,3 +12,5 @@ __pycache__/
 Passenger/backup/
 Passenger/old/
 *.h5
+dask-worker-space/
+*.png
