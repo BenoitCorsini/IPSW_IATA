@@ -39,7 +39,7 @@ def check_folder(folder):
 	if not os.path.exists(folder):
 		os.makedirs(folder)
 
-def agg_data(airline_data):
+def agg_data_loop(airline_data):
     
     # To combine combination of pairs of airports
     sorted_airports = airline_data[['Dep Airport Code', 'Arr Airport Code']].apply(sorted, axis=1)
@@ -129,11 +129,8 @@ if __name__ == '__main__':
 
     for airline in airline_list:
         airline_data = schedule_data[schedule_data['IATA AL'].isin([airline,])].sort_values(by=['Time series'])
-        airline_data['Is IOSA'] = airline_data.apply(convert_IOSA, axis=1)
-        airline_data['CS_OP'] = airline_data.apply(convert_CS_OP, axis=1)
-        airline_data.rename(columns={'CS_OP':'Is CS'}, inplace=True)
 
-        airline_data_agg = agg_data(airline_data)
+        airline_data_agg = agg_data_loop(airline_data)
 
         path = 'sample_airline/'+airline+'/'
         check_folder(path)
