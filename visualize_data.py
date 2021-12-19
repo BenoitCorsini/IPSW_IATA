@@ -65,11 +65,11 @@ if __name__ == '__main__':
         schedule_data = pickle.load(file)
 
     # airline_list = ['A5','VJ','AC','EY']
-    airline = 'EY'
+    airline = 'W6'
     filtered_data = schedule_data[schedule_data['IATA AL'].isin([airline,])]
 
-    airline = ''
-    filtered_data = schedule_data
+    # airline = ''
+    # filtered_data = schedule_data
 
     # Groupby airport pair and year
     group_data = filtered_data.groupby( [pd.Grouper(key='Time series', freq=('1Y')),], as_index=False)
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     ax.set_xlabel("Year",fontsize=14)
     plt.legend(loc='center left', bbox_to_anchor=(0.1, 1.1), ncol=2)
 
-    fig.savefig('images/nFlights_%s.png' %(airline), format='png', dpi=300, bbox_inches='tight')
+    fig.savefig('images/nFlights_%s.pdf' %(airline), format='pdf', dpi=300, bbox_inches='tight')
     plt.show()
 
     # ASMs plot
@@ -141,19 +141,26 @@ if __name__ == '__main__':
                 'nonIOSA Codeshared ASMs',
                 'nonIOSA Operated ASMs']
 
-    color={"IOSA Codeshared ASMs": "#ff4d4d", 
-        "IOSA Operated ASMs": "#ffcccc",
-        "nonIOSA Codeshared ASMs": "#0066ff",
-        "nonIOSA Operated ASMs": "#cce0ff",}
+    color={"IOSA Codeshared ASMs": "#d9d9d9", 
+        "IOSA Operated ASMs": "#9c9c9c",
+        "nonIOSA Codeshared ASMs": "#d9d9d9",
+        "nonIOSA Operated ASMs": "#9c9c9c",}
 
     fig = plt.figure()
     ax = fig.gca()
     filtered_data_agg[columns].plot(kind='bar', ax=ax, stacked=True, color=color)
     ax.set_ylabel("Available Seat Miles (ASMs)",fontsize=14)
     ax.set_xlabel("Year",fontsize=14)
+
+    bars = ax.patches
+    hatches = ''.join(h*len(filtered_data_agg) for h in '//oo')
+
+    for bar, hatch in zip(bars, hatches):
+        bar.set_hatch(hatch)
+    
     plt.legend(loc='center left', bbox_to_anchor=(0.0, 1.15), ncol=2)
 
-    fig.savefig('images/ASMs_%s.png' %(airline), format='png', dpi=300, bbox_inches='tight')
+    fig.savefig('images/ASMs_%s.pdf' %(airline), format='pdf', dpi=300, bbox_inches='tight')
     plt.show()
 
     # Airlines plot
@@ -174,5 +181,5 @@ if __name__ == '__main__':
     ax.set_xlabel("Year",fontsize=14)
     plt.legend(loc='center left', bbox_to_anchor=(0.0, 1.15), ncol=2)
 
-    fig.savefig('images/Airlines_%s.png' %(airline), format='png', dpi=300, bbox_inches='tight')
+    fig.savefig('images/Airlines_%s.pdf' %(airline), format='pdf', dpi=300, bbox_inches='tight')
     plt.show()

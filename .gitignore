@@ -14,3 +14,5 @@ Passenger/old/
 *.h5
 dask-worker-space/
 *.png
+*.zip
+*.pdf
